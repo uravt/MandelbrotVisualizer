@@ -1,11 +1,15 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
-
-RWStructuredBuffer<float> debug_buffer;
+#pragma kernel Julia
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;
+
+float boundXLowerInit;
+float boundXUpperInit;
+float boundYLowerInit;
+float boundYUpperInit;
 
 float boundXLower;
 float boundXUpper;
@@ -14,6 +18,10 @@ float boundYUpper;
 
 float width;
 float height;
+
+int mousePosX;
+int mousePosY;
+
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -38,9 +46,35 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float t = curr_iter/iterations;
 
-    Result[id.xy] = lerp(start,finish,t);;
+    Result[id.xy] = lerp(start,finish,t);
+}
 
-    debug_buffer[id.x + id.x * id.y] = id.x;
+[numthreads(8,8,1)]
+void Julia (uint3 id : SV_DispatchThreadID)
+{
+    const float p = boundXLower + (boundXUpper - boundXLower) * (id.x / width);
+    const float q = boundYLower + (boundYUpper - boundYLower) * (id.y / height);
+    const float c1 = boundXLowerInit + (boundXUpperInit - boundXLowerInit) * (mousePosX / width);
+    const float c2 = boundYLowerInit + (boundYUpperInit - boundYLowerInit) * (mousePosY / height);
+    float x = p;
+    float y = q;
+    
+    const float iterations = 1000;
+    float curr_iter = 0;
+    while(x*x + y*y <= 4 && curr_iter < iterations)
+    {
+        float temp = x*x - y*y + c1;
+        y = 2 * x * y + c2;
+        x = temp;
+        curr_iter = curr_iter + 1;
+    }
+
+    float4 start = float4(0,0,0,0.5);
+    float4 finish = float4(0,0,1,0.5);
+
+    float t = curr_iter/iterations;
+
+    Result[id.xy] = lerp(start,finish,t);
 }
 
 float4 color_grad8(float4 colors[8], float t)

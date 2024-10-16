@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MandelbrotGenerator : MonoBehaviour
 {
@@ -11,16 +12,20 @@ public class MandelbrotGenerator : MonoBehaviour
     [SerializeField] public float boundXUpper = 1f;
     [SerializeField] public float boundYLower = -1.12f;
     [SerializeField] public float boundYUpper = 1.12f;
+
+    [SerializeField] public bool isPaused = false;
     
     [SerializeField] float scrollMultiplier = 0.1f;
     [SerializeField] float translateConstant = 0.01f;
-
+    
     private int boundXLowerID;
     private int boundXUpperID;
     private int boundYLowerID;
     private int boundYUpperID;
     private int widthID;
     private int heightID;
+    private int mousePosXID;
+    private int mousePosYID;
     private int debugBufferID;
     
     public ComputeBuffer debugBuffer;
@@ -48,12 +53,21 @@ public class MandelbrotGenerator : MonoBehaviour
         renderTexture.enableRandomWrite = true;
         renderTexture.Create();
         
+        computeShader.SetFloat("boundXLowerInit", boundXLower);
+        computeShader.SetFloat("boundXUpperInit", boundXUpper);
+        computeShader.SetFloat("boundYLowerInit", boundYLower);
+        computeShader.SetFloat("boundYUpperInit", boundYUpper);
+        
         boundXLowerID = Shader.PropertyToID("boundXLower");
         boundXUpperID = Shader.PropertyToID("boundXUpper");
         boundYLowerID = Shader.PropertyToID("boundYLower");
         boundYUpperID = Shader.PropertyToID("boundYUpper");
         widthID = Shader.PropertyToID("width");
         heightID = Shader.PropertyToID("height");
+
+        mousePosXID = Shader.PropertyToID("mousePosX");
+        mousePosYID = Shader.PropertyToID("mousePosY");
+        
         debugBufferID = Shader.PropertyToID("debug_buffer");
         
         computeShader.SetFloat(widthID, Screen.width);
@@ -62,7 +76,16 @@ public class MandelbrotGenerator : MonoBehaviour
         UpdateGPUData();
         
         computeShader.SetTexture(0, "Result", renderTexture);
-        computeShader.Dispatch(0, renderTexture.width/8,renderTexture.height/8, 1);
+        computeShader.SetTexture(1, "Result", renderTexture);
+        
+        if (SceneManager.GetActiveScene().buildIndex == 0)
+        {
+            computeShader.Dispatch(0, renderTexture.width/8,renderTexture.height/8, 1);
+        }
+        else
+        {
+            computeShader.Dispatch(1, renderTexture.width/8,renderTexture.height/8, 1);
+        }
 
         debugBuffer = new ComputeBuffer(Screen.width * Screen.height, 4);
         debugData = new int[debugBuffer.count];
@@ -78,13 +101,20 @@ public class MandelbrotGenerator : MonoBehaviour
         }
         
         computeShader.SetTexture(0, "Result", renderTexture);
+        computeShader.SetTexture(1, "Result", renderTexture);
         UpdateGPUData();
         
         int groupsX = Mathf.CeilToInt(renderTexture.width / 8f);
         int groupsY = Mathf.CeilToInt(renderTexture.height / 8f);
         
-        computeShader.Dispatch(0, groupsX, groupsY, 1);
-        debugBuffer.GetData(debugData);
+        if (SceneManager.GetActiveScene().buildIndex == 0)
+        {
+            computeShader.Dispatch(0, groupsX,groupsY, 1);
+        }
+        else
+        {
+            computeShader.Dispatch(1, groupsX,groupsY, 1);
+        }
         Graphics.Blit(renderTexture, destination);
     }
 
@@ -94,6 +124,12 @@ public class MandelbrotGenerator : MonoBehaviour
         computeShader.SetFloat(boundXUpperID, boundXUpper);
         computeShader.SetFloat(boundYLowerID, boundYLower);
         computeShader.SetFloat(boundYUpperID, boundYUpper);
+        if (!isPaused)
+        {
+            computeShader.SetFloat(mousePosXID, Input.mousePosition.x);
+            computeShader.SetFloat(mousePosYID, Input.mousePosition.y);
+        }
+        
         computeShader.SetBuffer(computeShader.FindKernel("CSMain") , debugBufferID, debugBuffer);
     }
 
@@ -148,6 +184,11 @@ public class MandelbrotGenerator : MonoBehaviour
         {
             SavePNG();
         }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            isPaused = !isPaused;
+        }
     }
     
     void OnEnable () {
@@ -166,10 +207,10 @@ public class MandelbrotGenerator : MonoBehaviour
         tex.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
         tex.Apply();
         byte[] bytes = tex.EncodeToPNG();
-        var dirPath = Application.dataPath + "/../SaveImages/";
+        var dirPath = Application.persistentDataPath + "/../SaveImages/";
         if(!Directory.Exists(dirPath)) {
             Directory.CreateDirectory(dirPath);
         }
-        File.WriteAllBytes(dirPath + "Image" + ".png", bytes);
+        File.WriteAllBytes(dirPath + DateTime.Now.ToString("yyyyMMddTHHmmss") + ".png", bytes);
     }
 }
