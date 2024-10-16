@@ -1,0 +1,59 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+RWStructuredBuffer<float> debug_buffer;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+float boundXLower;
+float boundXUpper;
+float boundYLower;
+float boundYUpper;
+
+float width;
+float height;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    const float p = boundXLower + (boundXUpper - boundXLower) * (id.x / width);
+    const float q = boundYLower + (boundYUpper - boundYLower) * (id.y / height);
+    float x = 0;
+    float y = 0;
+    
+    const float iterations = 1000;
+    float curr_iter = 0;
+    while(x*x + y*y <= 4 && curr_iter < iterations)
+    {
+        float temp = x*x - y*y + p;
+        y = 2 * x * y + q;
+        x = temp;
+        curr_iter = curr_iter + 1;
+    }
+
+    float4 start = float4(0,0,0,1);
+    float4 finish = float4(0,1,0,1);
+
+    float t = curr_iter/iterations;
+
+    Result[id.xy] = lerp(start,finish,t);;
+
+    debug_buffer[id.x + id.x * id.y] = id.x;
+}
+
+float4 color_grad8(float4 colors[8], float t)
+{
+    uint index = ceil(t*8);
+    if(index >= 7)
+    {
+        return colors[7];
+    }
+    else
+    {
+        return lerp(colors[index], colors[index + 1], (t - 0.125 * index)/8);
+    }
+}
+
+
