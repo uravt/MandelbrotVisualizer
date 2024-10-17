@@ -27,6 +27,7 @@ public class MandelbrotGenerator : MonoBehaviour
     private int mousePosXID;
     private int mousePosYID;
     private int debugBufferID;
+    private int colorsID; 
     
     public ComputeBuffer debugBuffer;
     private int[] debugData;
@@ -38,13 +39,21 @@ public class MandelbrotGenerator : MonoBehaviour
     {
         gradient = new Gradient();
         GradientColorKey[] colors = new GradientColorKey[8];
-        colors[0] = new GradientColorKey(Color.red, 0.0f);
-        colors[1] = new GradientColorKey(Color.blue, 1.0f);
+        colors[0] = new GradientColorKey(new Color(0.0f, 0, 0), 0f);
+        colors[1] = new GradientColorKey(new Color(0.012f, 0.016f, 0.369f), 0.125f);
+        colors[2] = new GradientColorKey(new Color(0.008f, 0.243f, 0.541f), 0.250f);
+        colors[3] = new GradientColorKey(new Color(0f, 0.467f, 0.714f), 0.375f);
+        colors[4] = new GradientColorKey(new Color(0f, 0.588f, 0.78f), 0.5f);
+        colors[5] = new GradientColorKey(new Color(0f, 0.706f, 0.847f), 0.625f);
+        colors[6] = new GradientColorKey(new Color(0.282f, 0.792f, 0.894f), 0.750f);
+        //colors[7] = new GradientColorKey(new Color(0.565f, 0.878f, 0.937f), 0.885f);
+        colors[7] = new GradientColorKey(new Color(0.282f, 0.792f, 0.894f), 0.750f);
         
         var alphas = new GradientAlphaKey[1];
         alphas[0] = new GradientAlphaKey(1.0f, 0.0f);
         
         gradient.SetKeys(colors, alphas);
+        
     }
 
     void Start()
@@ -64,11 +73,10 @@ public class MandelbrotGenerator : MonoBehaviour
         boundYUpperID = Shader.PropertyToID("boundYUpper");
         widthID = Shader.PropertyToID("width");
         heightID = Shader.PropertyToID("height");
-
         mousePosXID = Shader.PropertyToID("mousePosX");
         mousePosYID = Shader.PropertyToID("mousePosY");
-        
         debugBufferID = Shader.PropertyToID("debug_buffer");
+        colorsID = Shader.PropertyToID("colors");
         
         computeShader.SetFloat(widthID, Screen.width);
         computeShader.SetFloat(heightID, Screen.height);
@@ -124,6 +132,7 @@ public class MandelbrotGenerator : MonoBehaviour
         computeShader.SetFloat(boundXUpperID, boundXUpper);
         computeShader.SetFloat(boundYLowerID, boundYLower);
         computeShader.SetFloat(boundYUpperID, boundYUpper);
+        computeShader.SetFloats(colorsID, GradientToFloatArray(gradient));
         if (!isPaused)
         {
             computeShader.SetFloat(mousePosXID, Input.mousePosition.x);
@@ -212,5 +221,23 @@ public class MandelbrotGenerator : MonoBehaviour
             Directory.CreateDirectory(dirPath);
         }
         File.WriteAllBytes(dirPath + DateTime.Now.ToString("yyyyMMddTHHmmss") + ".png", bytes);
+    }
+
+    public float[] GradientToFloatArray(Gradient g)
+    {
+        float[] colors = new float[g.colorKeys.Length * 4];
+
+        for (int i = 0; i < g.colorKeys.Length * 4; i += 4)
+        {
+            Color currColor = g.colorKeys[i/4].color;
+            colors[i] = currColor.r;
+            colors[i + 1] = currColor.g;
+            colors[i + 2] = currColor.b;
+            colors[i + 3] = currColor.a;
+        }
+        
+        Debug.Log(string.Join(",", colors));
+        
+        return colors;
     }
 }

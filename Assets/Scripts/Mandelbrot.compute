@@ -16,6 +16,8 @@ float boundXUpper;
 float boundYLower;
 float boundYUpper;
 
+float4 colors[8];
+
 float width;
 float height;
 
@@ -46,7 +48,15 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float t = curr_iter/iterations;
 
-    Result[id.xy] = lerp(start,finish,t);
+    uint index = floor(t*8);
+    if(index >= 7)
+    {
+        Result[id.xy] = colors[7];
+    }
+    else
+    {
+        Result[id.xy] = lerp(colors[index], colors[index + 1], 8 * t - index);
+    }
 }
 
 [numthreads(8,8,1)]
@@ -69,25 +79,22 @@ void Julia (uint3 id : SV_DispatchThreadID)
         curr_iter = curr_iter + 1;
     }
 
-    float4 start = float4(0,0,0,0.5);
-    float4 finish = float4(0,0,1,0.5);
+    float4 start = float4(0,0,0,1);
+    float4 finish = float4(1,1,1,1);
 
     float t = curr_iter/iterations;
-
-    Result[id.xy] = lerp(start,finish,t);
-}
-
-float4 color_grad8(float4 colors[8], float t)
-{
-    uint index = ceil(t*8);
+    
+    uint index = floor(t*8);
     if(index >= 7)
     {
-        return colors[7];
+        Result[id.xy] = colors[7];
     }
     else
     {
-        return lerp(colors[index], colors[index + 1], (t - 0.125 * index)/8);
+        Result[id.xy] = lerp(colors[index], colors[index + 1], 8 * t - index);
     }
 }
+
+
 
 
