@@ -236,8 +236,6 @@ public class MandelbrotGenerator : MonoBehaviour
             colors[i + 3] = currColor.a;
         }
         
-        Debug.Log(string.Join(",", colors));
-        
         return colors;
     }
 }
